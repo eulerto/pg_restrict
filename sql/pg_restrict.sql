@@ -1,0 +1,47 @@
+\set VERBOSITY terse
+
+CREATE DATABASE db_restrict_1;
+
+CREATE ROLE role_restrict_1 SUPERUSER LOGIN;	-- master role
+CREATE ROLE role_restrict_2 SUPERUSER LOGIN;
+CREATE ROLE role_restrict_3 SUPERUSER LOGIN;
+
+CREATE TABLE tmp_restrict_1 (a integer);
+INSERT INTO tmp_restrict_1 (a) VALUES(1),(2),(3);
+
+\connect - role_restrict_2
+
+CREATE DATABASE db_restrict_a;			-- non-removable database
+
+DROP DATABASE db_restrict_a;			-- failed
+DROP DATABASE db_restrict_1;			-- succeed
+
+CREATE ROLE role_restrict_a;			-- non-removable role
+
+DROP ROLE role_restrict_a;				-- failed
+DROP ROLE role_restrict_3;				-- succeed
+
+ALTER SYSTEM SET work_mem TO '2MB';		-- failed
+
+COPY tmp_restrict_1 TO PROGRAM 'gzip > /tmp/tmp_restrict_1.dat.gz';		-- failed
+
+COPY tmp_restrict_1 TO '/tmp/tmp_restrict_2.dat';						-- succeed
+
+\connect - role_restrict_1
+
+DROP DATABASE db_restrict_a;			-- succeed
+
+DROP ROLE role_restrict_a;				-- succeed
+
+ALTER SYSTEM SET work_mem TO '3MB';		-- succeed
+
+COPY tmp_restrict_1 TO PROGRAM 'gzip > /tmp/tmp_restrict_3.dat.gz';		-- succeed
+
+\connect - euler
+
+ALTER SYSTEM RESET work_mem;			-- succeed
+
+DROP TABLE tmp_restrict_1;
+
+DROP ROLE role_restrict_1;				-- succeed
+DROP ROLE role_restrict_2;				-- succeed
