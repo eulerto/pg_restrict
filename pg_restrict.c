@@ -28,6 +28,8 @@ bool		alter_system;
 #endif
 /* whether to restrict ALTER TABLE */
 bool		alter_table;
+/* whether to restrict CREATE TABLE */
+bool		create_table;
 /* wheter to restrict COPY ... PROGRAM */
 bool		copy_program;
 /* list of master roles (have no restrictions) */
@@ -92,6 +94,16 @@ _PG_init(void)
 							 "Roles (even superusers) cannot use ALTER TABLE unless it is listed as master role.",
 							 NULL,
 							 &alter_table,
+							 false,
+							 PGC_SIGHUP, 0,
+							 NULL,
+							 NULL,
+							 NULL);
+	
+	DefineCustomBoolVariable("pg_restrict.create_table",
+							 "Roles (even superusers) cannot use CREATE TABLE unless it is listed as master role.",
+							 NULL,
+							 &create_table,
 							 false,
 							 PGC_SIGHUP, 0,
 							 NULL,
@@ -329,11 +341,9 @@ pgr_ProcessUtility(Node *pstmt, const char *queryString,
 #if PG_VERSION_NUM >= 100000
 	else if (IsA(pstmt->utilityStmt, AlterTableStmt) && alter_table)
 	{
-		AlterTableStmt	*stmt = (AlterTableStmt *) pstmt->utilityStmt;
 #else
 	else if (IsA(pstmt, AlterTableStmt) && alter_table)
 	{
-		AlterTableStmt	*stmt = (AlterTableStmt *) pstmt;
 #endif
 		bool		is_master = false;
 		ListCell	*lc;
@@ -354,6 +364,33 @@ pgr_ProcessUtility(Node *pstmt, const char *queryString,
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 						 errmsg("cannot execute ALTER TABLE")));
+	}
+#if PG_VERSION_NUM >= 100000
+	else if (IsA(pstmt->utilityStmt, CreateStmt) && create_table)
+	{
+#else
+	else if (IsA(pstmt, CreateStmt) && create_table)
+	{
+#endif
+		bool		is_master = false;
+		ListCell	*lc;
+
+			foreach(lc, master_roles)
+			{
+				if (strcmp(lfirst(lc), current_rolename) == 0)
+				{
+					is_master = true;
+					break;
+				}
+			}
+
+			/*
+			 * Only master roles can execute CREATE TABLE
+			 */
+			if (!is_master)
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						 errmsg("cannot execute CREATE TABLE")));
 	}
 	/*
 	 * Fallback to normal process, be it the previous hook loaded
