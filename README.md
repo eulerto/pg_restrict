@@ -47,7 +47,7 @@ There are several configuration parameters that control the behavior of **pg_res
 
 * `pg_restrict.alter_system` (boolean): restrict ALTER SYSTEM command to master roles (`pg_restrict.master_roles` parameter). Default is _false_.
 * `pg_restrict.alter_table`  (boolean): restrict ALTER TABLE command to master roles (`pg_restrict.master_roles` parameter). Default is _false_.
-* `pg_restrict.create_table` (boolean): restrict ALTER TABLE command to master roles (`pg_restrict.master_roles` parameter). Default is _false_.
+* `pg_restrict.create_table` (boolean): restrict CREATE TABLE command to master roles (`pg_restrict.master_roles` parameter). Default is _false_.
 * `pg_restrict.copy_program` (boolean): restrict COPY ... PROGRAM command to master roles (`pg_restrict.master_roles` parameter). Default is _false_.
 * `pg_restrict.master_roles` (string): Roles that are allowed to execute the restricted commands. If there is more than one role, separate them with comma. Default is _postgres_.
 * `pg_restrict.nonremovable_databases` (string): restrict DROP databases listed here to a master role (even if the current role is the database owner or superuser). Default is _postgres, template1, template0_.
