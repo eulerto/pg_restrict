@@ -156,34 +156,32 @@ static void
 pgr_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 				   ProcessUtilityContext context, ParamListInfo params, QueryEnvironment *queryEnv,
 				   DestReceiver *dest, QueryCompletion *qc)
+{
+	Node	*pst = (Node *) pstmt->utilityStmt;
 #elif PG_VERSION_NUM >= 100000
 static void
 pgr_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 				   ProcessUtilityContext context, ParamListInfo params, QueryEnvironment *queryEnv,
 				   DestReceiver *dest, char *completionTag)
+{
+	Node	*pst = (Node *) pstmt->utilityStmt;
 #else
 static void
-pgr_ProcessUtility(Node *pstmt, const char *queryString,
+pgr_ProcessUtility(Node *pst, const char *queryString,
 				   ProcessUtilityContext context, ParamListInfo params,
 				   DestReceiver *dest, char *completionTag)
-#endif
 {
+#endif
+
 #if PG_VERSION_NUM >= 90500
 	char		*current_rolename = GetUserNameFromId(GetUserId(), false);
 #else
 	char		*current_rolename = GetUserNameFromId(GetUserId());
 #endif
 
-#if PG_VERSION_NUM >= 100000
-	if (IsA(pstmt->utilityStmt, DropdbStmt))
+	if (IsA(pst, DropdbStmt))
 	{
-		DropdbStmt	*stmt = (DropdbStmt *) pstmt->utilityStmt;
-#else
-	if (IsA(pstmt, DropdbStmt))
-	{
-		DropdbStmt	*stmt = (DropdbStmt *) pstmt;
-#endif
-		char		*dropped_database = stmt->dbname;
+		DropdbStmt	*stmt = (DropdbStmt *) pst;
 		ListCell	*lc;
 
 		/*
@@ -191,7 +189,7 @@ pgr_ProcessUtility(Node *pstmt, const char *queryString,
 		 */
 		foreach(lc, nonremovable_databases)
 		{
-			if (strcmp(lfirst(lc), dropped_database) == 0)
+			if (strcmp(lfirst(lc), stmt->dbname) == 0)
 			{
 				bool		is_master = false;
 				ListCell	*tc;
@@ -208,19 +206,13 @@ pgr_ProcessUtility(Node *pstmt, const char *queryString,
 				if (!is_master)
 					ereport(ERROR,
 							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-							 errmsg("cannot drop database \"%s\"", dropped_database)));
+							 errmsg("cannot drop database \"%s\"", stmt->dbname)));
 			}
 		}
 	}
-#if PG_VERSION_NUM >= 100000
-	else if (IsA(pstmt->utilityStmt, DropRoleStmt))
+	else if (IsA(pst, DropRoleStmt))
 	{
-		DropRoleStmt	*stmt = (DropRoleStmt *) pstmt->utilityStmt;
-#else
-	else if (IsA(pstmt, DropRoleStmt))
-	{
-		DropRoleStmt	*stmt = (DropRoleStmt *) pstmt;
-#endif
+		DropRoleStmt	*stmt = (DropRoleStmt *) pst;
 		ListCell		*lc;
 
 		foreach(lc, stmt->roles)
@@ -261,13 +253,8 @@ pgr_ProcessUtility(Node *pstmt, const char *queryString,
 		}
 	}
 #if PG_VERSION_NUM >= 90400
-#if PG_VERSION_NUM >= 100000
-	else if (IsA(pstmt->utilityStmt, AlterSystemStmt) && alter_system)
+	else if (IsA(pst, AlterSystemStmt) && alter_system)
 	{
-#else
-	else if (IsA(pstmt, AlterSystemStmt) && alter_system)
-	{
-#endif
 		bool		is_master = false;
 		ListCell	*lc;
 
@@ -289,15 +276,9 @@ pgr_ProcessUtility(Node *pstmt, const char *queryString,
 					 errmsg("cannot execute ALTER SYSTEM")));
 	}
 #endif	/* AlterSystemStmt >= 9.4 */
-#if PG_VERSION_NUM >= 100000
-	else if (IsA(pstmt->utilityStmt, CopyStmt) && copy_program)
+	else if (IsA(pst, CopyStmt) && copy_program)
 	{
-		CopyStmt	*stmt = (CopyStmt *) pstmt->utilityStmt;
-#else
-	else if (IsA(pstmt, CopyStmt) && copy_program)
-	{
-		CopyStmt	*stmt = (CopyStmt *) pstmt;
-#endif
+		CopyStmt	*stmt = (CopyStmt *) pst;
 		bool		is_master = false;
 		ListCell	*lc;
 
@@ -347,11 +328,11 @@ pgr_ProcessUtility(Node *pstmt, const char *queryString,
 								dest, completionTag);
 #else
 	if (prev_ProcessUtility)
-		prev_ProcessUtility(pstmt, queryString,
+		prev_ProcessUtility(pst, queryString,
 							context, params,
 							dest, completionTag);
 	else
-		standard_ProcessUtility(pstmt, queryString,
+		standard_ProcessUtility(pst, queryString,
 								context, params,
 								dest, completionTag);
 #endif
