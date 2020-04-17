@@ -46,6 +46,7 @@ In order to function, this extension must be loaded via `shared_preload_librarie
 There are several configuration parameters that control the behavior of **pg_restrict**. The default behavior is to restrict drop databases `postgres`, `template1`, and `template0` and disallow removal of role `postgres`. Role `postgres` can drop any restricted database/role (because it is a master role, by default).
 
 * `pg_restrict.alter_system` (boolean): restrict ALTER SYSTEM command to master roles (`pg_restrict.master_roles` parameter). Default is _false_.
+* `pg_restrict.alter_table`  (boolean): restrict ALTER TABLE command to master roles (`pg_restrict.master_roles` parameter). Default is _false_.
 * `pg_restrict.copy_program` (boolean): restrict COPY ... PROGRAM command to master roles (`pg_restrict.master_roles` parameter). Default is _false_.
 * `pg_restrict.master_roles` (string): Roles that are allowed to execute the restricted commands. If there is more than one role, separate them with comma. Default is _postgres_.
 * `pg_restrict.nonremovable_databases` (string): restrict DROP databases listed here to a master role (even if the current role is the database owner or superuser). Default is _postgres, template1, template0_.
@@ -56,6 +57,7 @@ These parameters are set in `postgresql.conf`. Typical usage might be:
 ```
 shared_preload_libraries = 'pg_restrict'
 pg_restrict.alter_system = on
+pg_restrict.alter_table  = on
 pg_restrict.copy_program = off
 pg_restrict.master_roles = 'euler, admin'
 pg_restrict.nonremovable_databases = 'prod, bi, mydb, postgres, template1, template0'
@@ -117,6 +119,19 @@ postgres=# SHOW pg_restrict.nonremovable_databases;
 
 postgres=# DROP DATABASE prod;
 psql: ERRO:  cannot drop database "prod"
+
+
+postgres=# show pg_restrict.alter_table ;
+ pg_restrict.alter_table
+-------------------------
+ on
+(1 row)
+
+postgres=# alter table foo add column foo1 integer;
+ERROR:  cannot execute ALTER TABLE
+postgres=#
+
+
 ```
 
 License
